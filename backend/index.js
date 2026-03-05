@@ -7,6 +7,7 @@ const https = require('https');
 
 const app = express();
 const PORT = 3001;
+const HOST = process.env.HOST || '0.0.0.0';
 
 const httpAgent = new http.Agent({ keepAlive: true, family: 4 });
 const httpsAgent = new https.Agent({ keepAlive: true, family: 4, rejectUnauthorized: false });
@@ -304,6 +305,6 @@ app.get('/api/download', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Backend server running at http://localhost:${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`Backend server running at http://${HOST}:${PORT}`);
 });

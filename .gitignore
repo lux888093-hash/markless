@@ -58,3 +58,7 @@ Thumbs.db
 # Build output
 dist/
 build/
+
+# MCP servers (xhs-toolkit)
+xhs_toolkit.log
+temp_images/

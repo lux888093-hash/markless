@@ -1,7 +1,7 @@
 ﻿import React, { useMemo, useState } from 'react';
 import './App.css';
 
-const API_BASE = 'http://localhost:3001';
+const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/$/, '');
 
 function extractLinks(text) {
   const regex = /(https?:\/\/(?:v\.douyin\.com|www\.douyin\.com|www\.iesdouyin\.com|www\.xiaohongshu\.com|xiaohongshu\.com|xhslink\.com)\/[^\s]+)/gi;
