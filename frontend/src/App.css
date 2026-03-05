@@ -281,6 +281,11 @@
   font-weight: 700;
 }
 
+.tag-netease {
+  background: #ffe8e6;
+  color: #b42318;
+}
+
 .state {
   font-size: 12px;
   font-weight: 700;

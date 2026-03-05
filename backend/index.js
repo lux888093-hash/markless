@@ -12,7 +12,7 @@ const HOST = process.env.HOST || '0.0.0.0';
 const httpAgent = new http.Agent({ keepAlive: true, family: 4 });
 const httpsAgent = new https.Agent({ keepAlive: true, family: 4, rejectUnauthorized: false });
 
-const URL_REGEX = /(https?:\/\/(?:v\.douyin\.com|www\.douyin\.com|www\.iesdouyin\.com|www\.xiaohongshu\.com|xiaohongshu\.com|xhslink\.com)\/[^\s]+)/gi;
+const URL_REGEX = /(https?:\/\/(?:v\.douyin\.com|www\.douyin\.com|www\.iesdouyin\.com|www\.xiaohongshu\.com|xiaohongshu\.com|xhslink\.com|163cn\.tv|music\.163\.com|y\.music\.163\.com)\/[^\s]+)/gi;
 
 app.use(cors());
 app.use(bodyParser.json({ limit: '1mb' }));
@@ -203,6 +203,77 @@ async function parseXiaohongshu(inputUrl) {
   };
 }
 
+function parseNeteaseSongId(url, html = '') {
+  const normalizedUrl = sanitizeUrl(url);
+  const patterns = [
+    /[?&]id=(\d{4,20})/i,
+    /\/song\/(\d{4,20})/i,
+    /song\?id=(\d{4,20})/i,
+    /"songId"\s*:\s*"(\d{4,20})"/i,
+    /"id"\s*:\s*(\d{4,20})/i
+  ];
+
+  for (const pattern of patterns) {
+    const fromUrl = normalizedUrl.match(pattern)?.[1];
+    if (fromUrl) return fromUrl;
+
+    const fromHtml = String(html).match(pattern)?.[1];
+    if (fromHtml) return fromHtml;
+  }
+
+  return '';
+}
+
+async function parseNeteaseMusic(inputUrl) {
+  const resolvedUrl = await resolveUrl(inputUrl);
+  let songId = parseNeteaseSongId(resolvedUrl);
+  let sharePageHtml = '';
+
+  if (!songId) {
+    sharePageHtml = await fetchText(resolvedUrl, { Referer: 'https://music.163.com/' });
+    songId = parseNeteaseSongId(resolvedUrl, sharePageHtml);
+  }
+
+  if (!songId) {
+    throw new Error('Cannot extract Netease song id from link');
+  }
+
+  const detailUrl = `https://music.163.com/api/song/detail/?id=${songId}&ids=%5B${songId}%5D`;
+  const detailResp = await axios.get(detailUrl, {
+    timeout: 25000,
+    proxy: false,
+    httpAgent,
+    httpsAgent,
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
+      Referer: 'https://music.163.com/'
+    }
+  });
+
+  const song = detailResp?.data?.songs?.[0];
+  if (!song) {
+    throw new Error('Netease song detail unavailable');
+  }
+
+  const artist = (song.ar || []).map((x) => x?.name).filter(Boolean).join(' / ');
+  const cover = normalizeMediaUrl(song?.al?.picUrl || '');
+  const audioUrl = `https://music.163.com/song/media/outer/url?id=${songId}.mp3`;
+
+  return {
+    original: inputUrl,
+    longUrl: resolvedUrl,
+    platform: 'netease',
+    itemId: songId,
+    status: 'Success',
+    title: song?.name || `Netease ${songId}`,
+    author: artist,
+    cover,
+    audioUrl,
+    videoUrl: null,
+    images: []
+  };
+}
+
 async function parseMedia(url) {
   const normalized = sanitizeUrl(url);
 
@@ -212,6 +283,10 @@ async function parseMedia(url) {
 
   if (/xiaohongshu\.com|xhslink\.com/i.test(normalized)) {
     return parseXiaohongshu(normalized);
+  }
+
+  if (/163cn\.tv|music\.163\.com|y\.music\.163\.com/i.test(normalized)) {
+    return parseNeteaseMusic(normalized);
   }
 
   throw new Error('Unsupported link');
@@ -290,6 +365,8 @@ app.get('/api/download', async (req, res) => {
       headers.Referer = 'https://www.xiaohongshu.com/';
     } else if (cleanUrl.includes('douyin.com') || cleanUrl.includes('iesdouyin.com') || cleanUrl.includes('snssdk.com')) {
       headers.Referer = 'https://www.douyin.com/';
+    } else if (cleanUrl.includes('music.163.com') || cleanUrl.includes('music.126.net') || cleanUrl.includes('163cn.tv')) {
+      headers.Referer = 'https://music.163.com/';
     }
 
     const response = await downloadStreamWithRetry(cleanUrl, headers);

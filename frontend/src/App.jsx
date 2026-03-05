@@ -4,7 +4,7 @@ import './App.css';
 const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/$/, '');
 
 function extractLinks(text) {
-  const regex = /(https?:\/\/(?:v\.douyin\.com|www\.douyin\.com|www\.iesdouyin\.com|www\.xiaohongshu\.com|xiaohongshu\.com|xhslink\.com)\/[^\s]+)/gi;
+  const regex = /(https?:\/\/(?:v\.douyin\.com|www\.douyin\.com|www\.iesdouyin\.com|www\.xiaohongshu\.com|xiaohongshu\.com|xhslink\.com|163cn\.tv|music\.163\.com|y\.music\.163\.com)\/[^\s]+)/gi;
   return [...new Set((text.match(regex) || []).map((x) => x.replace(/[),.;!?\]}>，。！？）】]+$/g, '')))];
 }
 
@@ -32,14 +32,31 @@ function buildDownloadItems(task) {
   const { data } = task;
   const prefix = sanitizeFilename(`${data.platform}-${data.itemId || 'media'}`);
 
+  if (data.audioUrl) {
+    return [{ url: data.audioUrl, filename: `${prefix}.mp3`, kind: 'audio' }];
+  }
+
   if (data.videoUrl) {
-    return [{ url: data.videoUrl, filename: `${prefix}.mp4` }];
+    return [{ url: data.videoUrl, filename: `${prefix}.mp4`, kind: 'video' }];
   }
 
   return (data.images || []).map((img, index) => ({
     url: img,
-    filename: `${prefix}-${index + 1}.jpg`
+    filename: `${prefix}-${index + 1}.jpg`,
+    kind: 'image'
   }));
+}
+
+function getCoverUrl(task) {
+  const cover = task?.data?.cover || '';
+  if (cover) return cover;
+
+  const platform = String(task?.data?.platform || task?.platform || '').toLowerCase();
+  if (platform.includes('netease') || platform.includes('网易云')) {
+    return '/netease-placeholder.svg';
+  }
+
+  return '';
 }
 
 export default function App() {
@@ -62,13 +79,13 @@ export default function App() {
   const handleParse = async () => {
     const links = extractLinks(inputText);
     if (links.length === 0) {
-      alert('请输入至少 1 条抖音或小红书链接。');
+      alert('请输入至少 1 条抖音/小红书/网易云链接。');
       return;
     }
 
     const initial = links.map((link) => ({
       original: link,
-      platform: /douyin|iesdouyin/.test(link) ? '抖音' : '小红书',
+      platform: /douyin|iesdouyin/.test(link) ? '抖音' : (/163cn\.tv|music\.163\.com|y\.music\.163\.com/.test(link) ? '网易云' : '小红书'),
       status: 'pending',
       data: null,
       message: ''
@@ -139,10 +156,10 @@ export default function App() {
 
       <main className="layout">
         <section className="hero card-glass">
-          <p className="eyebrow">Watermark Cleaner</p>
-          <h1>多链接一键去水印</h1>
+          <p className="eyebrow">Multi-Platform Downloader</p>
+          <h1>多平台链接解析下载</h1>
           <p className="hero-text">
-            支持抖音和小红书。一次粘贴多条链接，一键解析，一键下载。
+            支持抖音、小红书、网易云。一次粘贴多条链接，统一解析，批量下载。
           </p>
 
           <div className="hero-stats">
@@ -166,14 +183,14 @@ export default function App() {
           <textarea
             id="link-input"
             className="link-input"
-            placeholder="示例: https://www.iesdouyin.com/share/video/...\nhttps://www.xiaohongshu.com/explore/..."
+            placeholder="示例: https://www.iesdouyin.com/share/video/...\nhttps://www.xiaohongshu.com/explore/...\nhttps://163cn.tv/xxxx"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
           />
 
           <div className="actions-row">
             <button className="btn btn-primary" onClick={handleParse} disabled={loading || !inputText.trim()}>
-              {loading ? '解析中...' : '一键去水印'}
+              {loading ? '解析中...' : '一键解析'}
             </button>
             <button className="btn btn-accent" onClick={handleDownloadAll} disabled={stats.mediaCount === 0}>
               一键下载全部
@@ -201,12 +218,13 @@ export default function App() {
             return (
               <article key={`${task.original}-${idx}`} className="result-card card-glass">
                 <div className="thumb-wrap">
-                  {task.data?.cover ? <img src={task.data.cover} alt="cover" /> : <div className="thumb-empty">No Preview</div>}
+                  {getCoverUrl(task) ? <img src={getCoverUrl(task)} alt="cover" /> : <div className="thumb-empty">No Preview</div>}
                 </div>
 
                 <div className="content-wrap">
                   <div className="meta-row">
                     <span className="tag">{task.platform}</span>
+                    {task.data?.audioUrl && <span className="tag tag-netease">网易云音频</span>}
                     {task.status === 'pending' && <span className="state pending">解析中</span>}
                     {task.status === 'success' && <span className="state success">已完成</span>}
                     {task.status === 'failed' && <span className="state failed">失败</span>}
@@ -219,7 +237,13 @@ export default function App() {
                   {task.status === 'success' && (
                     <div className="download-block">
                       <div className="mini-actions">
-                        {task.data?.videoUrl ? (
+                        {task.data?.audioUrl ? (
+                          <>
+                            <button className="chip" onClick={() => triggerDownload(downloadItems[0].url, downloadItems[0].filename)}>下载音频</button>
+                            <button className="chip chip-light" onClick={() => window.open(task.data.audioUrl, '_blank')}>试听</button>
+                            <button className="chip chip-light" onClick={() => handleCopy(task.data.audioUrl)}>复制地址</button>
+                          </>
+                        ) : task.data?.videoUrl ? (
                           <>
                             <button className="chip" onClick={() => triggerDownload(downloadItems[0].url, downloadItems[0].filename)}>下载视频</button>
                             <button className="chip chip-light" onClick={() => window.open(task.data.videoUrl, '_blank')}>预览视频</button>

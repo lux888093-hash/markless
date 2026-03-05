@@ -59,16 +59,13 @@ foreach ($ip in $lanIps) {
 Write-Host '=================================' -ForegroundColor Cyan
 Write-Host ''
 
-$escapedBackendDir = Escape-SingleQuotes -Value $backendDir
 $escapedFrontendDir = Escape-SingleQuotes -Value $frontendDir
 
-$backendTitle = 'shuiyin-backend'
 $frontendTitle = 'shuiyin-frontend'
 
-$backendCmd = "$host.UI.RawUI.WindowTitle = '$backendTitle'; Set-Location -LiteralPath '$escapedBackendDir'; node index.js"
-$frontendCmd = "$host.UI.RawUI.WindowTitle = '$frontendTitle'; Set-Location -LiteralPath '$escapedFrontendDir'; npm run dev"
+$frontendCmd = "`$host.UI.RawUI.WindowTitle = '$frontendTitle'; Set-Location -LiteralPath '$escapedFrontendDir'; npm run dev"
 
-$backendProc = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoExit', '-Command', $backendCmd) -PassThru
+$backendProc = Start-Process -FilePath 'node' -ArgumentList @('index.js') -WorkingDirectory $backendDir -WindowStyle Hidden -PassThru
 $frontendProc = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoExit', '-Command', $frontendCmd) -PassThru
 
 $pidInfo = [ordered]@{
@@ -81,4 +78,5 @@ $pidInfo | ConvertTo-Json | Set-Content -Path $pidFile -Encoding utf8
 Write-Host "Backend started (PID: $($backendProc.Id))" -ForegroundColor Green
 Write-Host "Frontend started (PID: $($frontendProc.Id))" -ForegroundColor Green
 Write-Host "PID file: $pidFile" -ForegroundColor DarkGray
-Write-Host 'Use Ctrl+C in each window to stop services.' -ForegroundColor DarkGray
+Write-Host 'Backend is running in background (no terminal window).' -ForegroundColor DarkGray
+Write-Host 'Use stop.bat to stop both services.' -ForegroundColor DarkGray

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ff6a5f"/>
+      <stop offset="100%" stop-color="#d6392e"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="1200" fill="url(#bg)"/>
+  <circle cx="600" cy="530" r="220" fill="none" stroke="#ffffff" stroke-width="42" opacity="0.92"/>
+  <path d="M600 350c-99.4 0-180 80.6-180 180s80.6 180 180 180c54.4 0 102.8-24.2 135.8-62.4" fill="none" stroke="#ffffff" stroke-width="42" stroke-linecap="round" opacity="0.92"/>
+  <circle cx="782" cy="486" r="46" fill="#ffffff" opacity="0.92"/>
+  <text x="600" y="880" text-anchor="middle" font-size="92" font-family="Segoe UI, Microsoft YaHei, sans-serif" fill="#ffffff" font-weight="700">网易云音乐</text>
+</svg>
