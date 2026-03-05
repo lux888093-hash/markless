@@ -16,6 +16,16 @@ function makeDownloadProxyUrl(url, filename) {
   return `${API_BASE}/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
 }
 
+function makeMediaProxyUrl(url) {
+  return `${API_BASE}/api/media-proxy?url=${encodeURIComponent(url)}`;
+}
+
+function shouldProxyMediaUrl(url, platform = '') {
+  const lowerPlatform = String(platform || '').toLowerCase();
+  const lowerUrl = String(url || '').toLowerCase();
+  return lowerPlatform.includes('xiaohongshu') || lowerUrl.includes('xhscdn.com') || lowerUrl.includes('xiaohongshu.com');
+}
+
 function triggerDownload(url, filename) {
   const anchor = document.createElement('a');
   anchor.href = makeDownloadProxyUrl(url, filename);
@@ -49,14 +59,27 @@ function buildDownloadItems(task) {
 
 function getCoverUrl(task) {
   const cover = task?.data?.cover || '';
+  const platform = String(task?.data?.platform || task?.platform || '').toLowerCase();
+
+  if (cover && shouldProxyMediaUrl(cover, platform)) {
+    return makeMediaProxyUrl(cover);
+  }
+
   if (cover) return cover;
 
-  const platform = String(task?.data?.platform || task?.platform || '').toLowerCase();
   if (platform.includes('netease') || platform.includes('网易云')) {
     return '/netease-placeholder.svg';
   }
 
   return '';
+}
+
+function getPreviewUrl(task, url) {
+  const platform = String(task?.data?.platform || task?.platform || '').toLowerCase();
+  if (shouldProxyMediaUrl(url, platform)) {
+    return makeMediaProxyUrl(url);
+  }
+  return url;
 }
 
 export default function App() {
@@ -156,8 +179,8 @@ export default function App() {
 
       <main className="layout">
         <section className="hero card-glass">
-          <p className="eyebrow">Multi-Platform Downloader</p>
-          <h1>多平台链接解析下载</h1>
+          <p className="eyebrow">Lynn Toolbox</p>
+          <h1>Lynn的百宝箱</h1>
           <p className="hero-text">
             支持抖音、小红书、网易云。一次粘贴多条链接，统一解析，批量下载。
           </p>
@@ -251,6 +274,19 @@ export default function App() {
                           </>
                         ) : (
                           <>
+                            {downloadItems.length > 0 && (
+                              <div className="thumb-list">
+                                {downloadItems.slice(0, 6).map((item) => (
+                                  <img
+                                    key={`preview-${item.filename}`}
+                                    className="thumb-mini"
+                                    src={getPreviewUrl(task, item.url)}
+                                    alt={item.filename}
+                                    loading="lazy"
+                                  />
+                                ))}
+                              </div>
+                            )}
                             {downloadItems.slice(0, 8).map((item) => (
                               <button
                                 key={item.filename}

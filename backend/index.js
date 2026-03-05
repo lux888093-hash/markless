@@ -324,6 +324,23 @@ async function downloadStreamWithRetry(url, headers) {
   }
 }
 
+function buildMediaRequestHeaders(cleanUrl) {
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
+    Accept: '*/*'
+  };
+
+  if (cleanUrl.includes('xiaohongshu.com') || cleanUrl.includes('xhslink.com') || cleanUrl.includes('xhscdn.com')) {
+    headers.Referer = 'https://www.xiaohongshu.com/';
+  } else if (cleanUrl.includes('douyin.com') || cleanUrl.includes('iesdouyin.com') || cleanUrl.includes('snssdk.com')) {
+    headers.Referer = 'https://www.douyin.com/';
+  } else if (cleanUrl.includes('music.163.com') || cleanUrl.includes('music.126.net') || cleanUrl.includes('163cn.tv')) {
+    headers.Referer = 'https://music.163.com/';
+  }
+
+  return headers;
+}
+
 app.post('/api/parse-batch', async (req, res) => {
   const { content } = req.body || {};
   if (!content) return res.status(400).json({ error: 'No content provided' });
@@ -356,19 +373,7 @@ app.get('/api/download', async (req, res) => {
   const safeName = String(filename || 'download').replace(/"/g, '');
 
   try {
-    const headers = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
-      Accept: '*/*'
-    };
-
-    if (cleanUrl.includes('xiaohongshu.com') || cleanUrl.includes('xhslink.com') || cleanUrl.includes('xhscdn.com')) {
-      headers.Referer = 'https://www.xiaohongshu.com/';
-    } else if (cleanUrl.includes('douyin.com') || cleanUrl.includes('iesdouyin.com') || cleanUrl.includes('snssdk.com')) {
-      headers.Referer = 'https://www.douyin.com/';
-    } else if (cleanUrl.includes('music.163.com') || cleanUrl.includes('music.126.net') || cleanUrl.includes('163cn.tv')) {
-      headers.Referer = 'https://music.163.com/';
-    }
-
+    const headers = buildMediaRequestHeaders(cleanUrl);
     const response = await downloadStreamWithRetry(cleanUrl, headers);
 
     res.setHeader('Content-Disposition', `attachment; filename="${safeName}"; filename*=UTF-8''${encodeURIComponent(safeName)}`);
@@ -379,6 +384,27 @@ app.get('/api/download', async (req, res) => {
     response.data.pipe(res);
   } catch (error) {
     res.status(500).send(`Download failed: ${error.message}`);
+  }
+});
+
+app.get('/api/media-proxy', async (req, res) => {
+  const { url } = req.query;
+  if (!url) return res.status(400).send('URL is required');
+
+  const cleanUrl = sanitizeUrl(url);
+
+  try {
+    const headers = buildMediaRequestHeaders(cleanUrl);
+    const response = await downloadStreamWithRetry(cleanUrl, headers);
+
+    if (response.headers['content-type']) {
+      res.setHeader('Content-Type', response.headers['content-type']);
+    }
+    res.setHeader('Cache-Control', 'public, max-age=300');
+
+    response.data.pipe(res);
+  } catch (error) {
+    res.status(500).send(`Media proxy failed: ${error.message}`);
   }
 });
 

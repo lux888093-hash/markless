@@ -320,6 +320,25 @@
   margin-top: 12px;
 }
 
+.thumb-list {
+  width: 100%;
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.thumb-mini {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid #d7dbe4;
+  background: #f3f4f6;
+  flex: 0 0 auto;
+}
+
 .mini-actions {
   display: flex;
   flex-wrap: wrap;
