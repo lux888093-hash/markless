@@ -16,6 +16,7 @@ pids
 *.pid
 *.seed
 *.pid.lock
+.dev-server-pids.json
 
 # Coverage directory
 coverage/
